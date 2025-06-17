@@ -30,7 +30,7 @@
 ├── init_sql/schema.sql         
 ├── requirements.txt            
 └── README.md
-
+```
 ## для запуска проекта:
 git clone https://github.com/dsrosemary/mlops2_homework.git
 cd mlops2_homework
