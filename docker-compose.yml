@@ -1,0 +1,47 @@
+services:
+  zookeeper:
+    image: bitnami/zookeeper:3.9
+    environment:
+      ALLOW_ANONYMOUS_LOGIN: "yes"
+
+  kafka:
+    image: bitnami/kafka:3.7
+    depends_on: [zookeeper]
+    ports:
+      - "29092:29092"          
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_CFG_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_CFG_LISTENERS:        PLAINTEXT://0.0.0.0:9092,PLAINTEXT_HOST://0.0.0.0:29092
+      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      ALLOW_PLAINTEXT_LISTENER: "yes"
+
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: fraud_db
+      POSTGRES_USER: fraud
+      POSTGRES_PASSWORD: fraud
+    volumes:
+      - ./init_sql:/docker-entrypoint-initdb.d
+    ports:
+      - "55432:5432"
+
+  fraud_scoring:
+    build: ./scoring_service
+    depends_on: [kafka]
+    environment:
+      KAFKA_BROKER: kafka:9092
+      INPUT_TOPIC: transactions
+      OUTPUT_TOPIC: scores
+
+  score_saver:
+    build: ./saver_service
+    depends_on: [kafka, postgres]
+    environment:
+      KAFKA_BROKER: kafka:9092
+      SCORE_TOPIC: scores
+      PG_DSN: postgres://fraud:fraud@postgres:5432/fraud_db
+    ports:
+      - "8501:8501"
